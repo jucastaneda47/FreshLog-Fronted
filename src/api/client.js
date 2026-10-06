@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const BASE_URL = "http://localhost:8000";
+// En producción la URL del backend viene de VITE_API_URL (se configura en Vercel).
+// Si no existe, se usa el backend local.
+const BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/$/, "");
 
 const api = axios.create({
   baseURL: BASE_URL,
