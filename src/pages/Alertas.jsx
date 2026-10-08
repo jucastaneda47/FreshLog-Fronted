@@ -58,7 +58,7 @@ function fechaGenerada(fechaIso) {
 }
 
 function formatearFecha(fechaIso) {
-  const fecha = new Date(fechaIso);
+  const fecha = fechaGenerada(fechaIso);
   return fecha.toLocaleString("es-CO", {
     day: "2-digit",
     month: "short",

@@ -7,6 +7,7 @@ import GraficoDesperdicio from "../components/GraficoDesperdicio";
 import LineaDeTiempo from "../components/LineaDeTiempo";
 import GraficoRanking from "../components/GraficoRanking";
 import { obtenerColorHex } from "../utils/categoriaEstilos";
+import { fechaDeCalendario, fechaUtc } from "../utils/fechas";
 import {
   listarAlertas, consultarInventario, consultarMovimientos,
   consultarDistribucionCategorias, consultarProductosDeCategoria,
@@ -30,7 +31,7 @@ function tiposParaConsulta(chips) {
 }
 
 function formatearFechaCorta(fechaIso) {
-  return new Date(fechaIso).toLocaleDateString("es-CO", {
+  return fechaDeCalendario(fechaIso).toLocaleDateString("es-CO", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -133,7 +134,12 @@ export default function Dashboard() {
       hasta: hastaHistorial,
     })
       .then((data) => {
-        setEventosHistorial(data.eventos);
+        // Consumos y retiros se guardan en UTC: se pasan a hora local. Compras y vencimientos ya vienen como día local.
+        setEventosHistorial(
+          data.eventos.map((e) =>
+            e.tipo === "consumo" || e.tipo === "retiro" ? { ...e, fecha: fechaUtc(e.fecha).toISOString() } : e
+          )
+        );
         setTotalHistorial(data.total);
       })
       .finally(() => setCargandoHistorial(false));
