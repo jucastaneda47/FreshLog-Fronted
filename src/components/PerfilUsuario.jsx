@@ -22,7 +22,8 @@ export function CirculoUsuario({ usuario, avatar, size = "h-8 w-8", texto = "tex
   );
 }
 
-export default function PerfilUsuario() {
+export default function PerfilUsuario({ variante = "lateral" }) {
+  const enBarra = variante === "barra";
   const { usuario, cerrarSesion, actualizarUsuario } = useAuth();
   const [abierto, setAbierto] = useState(false);
   const [editando, setEditando] = useState(false);
@@ -67,9 +68,16 @@ export default function PerfilUsuario() {
   }
 
   return (
-    <div ref={contenedor} className="relative border-t border-white/10 px-4 py-4">
+    <div
+      ref={contenedor}
+      className={enBarra ? "relative" : "relative border-t border-white/10 px-4 py-4"}
+    >
       {abierto && (
-        <div className="absolute bottom-full left-3 z-50 mb-2 w-72 rounded-xl bg-white p-4 text-slate-800 shadow-xl">
+        <div
+          className={`absolute z-50 w-72 max-w-[calc(100vw-1.5rem)] rounded-xl bg-white p-4 text-slate-800 shadow-xl ${
+            enBarra ? "right-0 top-full mt-3" : "bottom-full left-3 mb-2"
+          }`}
+        >
           {!editando ? (
             <>
               <div className="flex items-center gap-3">
@@ -170,11 +178,11 @@ export default function PerfilUsuario() {
         >
           <CirculoUsuario usuario={usuario} avatar={avatar} />
         </button>
-        <div className="flex-1 overflow-hidden">
-          <p className="truncate text-sm font-medium">{usuario?.name || "Usuario"}</p>
+        <div className={enBarra ? "overflow-hidden" : "flex-1 overflow-hidden"}>
+          {!enBarra && <p className="truncate text-sm font-medium">{usuario?.name || "Usuario"}</p>}
           <button
             onClick={cerrarSesion}
-            className="text-xs text-slate-400 hover:text-white"
+            className={enBarra ? "px-1 py-2 text-xs text-slate-300 hover:text-white" : "text-xs text-slate-400 hover:text-white"}
           >
             Cerrar sesión
           </button>

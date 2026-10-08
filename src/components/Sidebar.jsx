@@ -10,7 +10,7 @@ const modulos = [
 
 export default function Sidebar() {
   return (
-    <aside className="flex w-60 shrink-0 flex-col justify-between bg-alacena-dark text-white">
+    <aside className="hidden w-60 shrink-0 flex-col justify-between bg-alacena-dark text-white md:flex">
       <div>
         <div className="flex items-center gap-2 px-5 py-5 text-lg font-semibold">
           <img src="/logo-alacena.png" alt="Alacena" className="h-9 w-9 object-contain" />

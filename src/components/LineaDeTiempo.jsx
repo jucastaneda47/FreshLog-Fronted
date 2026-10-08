@@ -285,7 +285,7 @@ export default function LineaDeTiempo({
           );
         })}
 
-        <div className="ml-auto flex items-center gap-2 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-500 md:ml-auto">
           <label className="flex items-center gap-1.5">
             Desde
             <input

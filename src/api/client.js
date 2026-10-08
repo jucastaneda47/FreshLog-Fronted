@@ -1,4 +1,6 @@
 import axios from "axios";
+import { guardarCache, leerCache, limpiarCache } from "../offline/almacen";
+import { fijarEnLinea } from "../offline/conexion";
 
 // En producción la URL del backend viene de VITE_API_URL (se configura en Vercel).
 // Si no existe, se usa el backend local.
@@ -17,19 +19,107 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Si el servidor responde 401 (sesión vencida) con una sesión abierta, se cierra
-// la sesión y se vuelve al login con aviso. El login fallido no cuenta.
+// ---------------------------------------------------------------------------
+// Trabajo sin conexión
+// ---------------------------------------------------------------------------
+// - Cada consulta (GET) que responde bien se guarda en el dispositivo, separada por usuario.
+// - Si luego no hay red (o el servidor no responde), la consulta devuelve la última copia guardada.
+// - Las acciones que modifican datos no se guardan: sin red fallan con un mensaje claro.
+//   (Las compras tienen su propio camino con cola: ver SyncContext.)
+const MENSAJE_SIN_CONEXION = "Sin conexión a internet. Esta acción necesita conexión.";
+
+let usuarioCache = null;
+try {
+  usuarioCache = localStorage.getItem("alacena_uid");
+} catch {
+  /* sin almacenamiento: no hay caché por usuario */
+}
+
+// Indica de quién son los datos guardados (se llama al iniciar sesión / cargar el perfil)
+export function fijarUsuarioCache(id) {
+  usuarioCache = id == null ? null : String(id);
+  try {
+    if (usuarioCache) localStorage.setItem("alacena_uid", usuarioCache);
+    else localStorage.removeItem("alacena_uid");
+  } catch {
+    /* sin almacenamiento */
+  }
+}
+
+export function usuarioDeLaCache() {
+  return usuarioCache;
+}
+
+function claveCache(url, params) {
+  const hayParams = params && Object.keys(params).length > 0;
+  return `${usuarioCache}|${url}|${hayParams ? JSON.stringify(params) : ""}`;
+}
+
+const SIN_CACHE = ["/autorizado", "/renovar-sesion"];
+
+function esConsultaCacheable(config) {
+  const url = config?.url || "";
+  return (
+    usuarioCache &&
+    (config?.method || "get").toLowerCase() === "get" &&
+    !SIN_CACHE.some((u) => url.startsWith(u))
+  );
+}
+
+// Error por falta de red: la petición no llegó al servidor
+export function esErrorDeRed(error) {
+  return Boolean(error && (error.sinConexion || (!error.response && !axios.isCancel(error))));
+}
+
+// Cierra la sesión local conservando la cola de compras pendientes
+// (así no se pierde lo registrado sin conexión; se enviará al volver a iniciar sesión).
+export async function limpiarSesionLocal() {
+  localStorage.removeItem("alacena_token");
+  localStorage.removeItem("alacena_perfil");
+  fijarUsuarioCache(null);
+  await limpiarCache();
+}
+
 api.interceptors.response.use(
-  (resp) => resp,
-  (error) => {
-    const url = error.config?.url || "";
-    if (error.response?.status === 401 && !url.includes("/login") && localStorage.getItem("alacena_token")) {
-      localStorage.removeItem("alacena_token");
+  (resp) => {
+    fijarEnLinea(true);
+    if (esConsultaCacheable(resp.config)) {
+      guardarCache(claveCache(resp.config.url, resp.config.params), resp.data);
+    }
+    return resp;
+  },
+  async (error) => {
+    const config = error.config || {};
+    const url = config.url || "";
+    const estado = error.response?.status;
+
+    // 1) El servidor no respondió (sin internet, servidor caído o dormido)
+    const sinRespuesta = !error.response && !axios.isCancel(error);
+    const servidorNoDisponible = estado === 502 || estado === 503 || estado === 504;
+    if (sinRespuesta) fijarEnLinea(false);
+    else if (!servidorNoDisponible) fijarEnLinea(true);
+
+    if (sinRespuesta || servidorNoDisponible) {
+      if (esConsultaCacheable(config)) {
+        const copia = await leerCache(claveCache(url, config.params));
+        if (copia) {
+          return { data: copia.datos, status: 200, statusText: "OK (guardado)", headers: {}, config, fromCache: true };
+        }
+      }
+      if (sinRespuesta) {
+        error.sinConexion = true;
+        error.response = { status: 0, data: { detail: MENSAJE_SIN_CONEXION } };
+      }
+    }
+
+    // 2) Sesión vencida con servidor disponible: se vuelve al login (la cola de compras se conserva)
+    if (estado === 401 && !url.includes("/login") && localStorage.getItem("alacena_token")) {
       try {
         sessionStorage.setItem("alacena_sesion_expirada", "1");
       } catch {
         /* sin almacenamiento: se cierra igual, solo sin aviso */
       }
+      await limpiarSesionLocal();
       window.location.assign("/login");
     }
     return Promise.reject(error);
@@ -67,9 +157,19 @@ export async function login({ username, password }) {
   return data;
 }
 
-export async function obtenerUsuarioActual() {
-  const { data } = await api.get("/autorizado");
+export async function obtenerUsuarioActual({ timeout } = {}) {
+  const { data } = await api.get("/autorizado", timeout ? { timeout } : undefined);
   return data;
+}
+
+// Comprueba si el servidor responde (se usa para detectar que volvió la conexión).
+export async function probarConexion() {
+  try {
+    await api.get("/autorizado", { timeout: 8000 });
+    return true;
+  } catch (error) {
+    return !esErrorDeRed(error) && !(error.response && [502, 503, 504].includes(error.response.status));
+  }
 }
 
 // --- Categorías ---
@@ -140,6 +240,13 @@ export async function crearCompra(fecha_compra) {
   return data;
 }
 
+// Envía una compra completa (con sus lotes y productos nuevos) en una sola operación.
+// Es idempotente: repetir el envío con el mismo cliente_id no crea nada nuevo.
+export async function sincronizarCompra(compra) {
+  const { data } = await api.post("/compras/sincronizar", compra);
+  return data;
+}
+
 // --- Lotes ---
 export async function crearLote({ producto_id, compra_id, fecha_vencimiento, cantidad_inicial }) {
   const { data } = await api.post("/lotes", {
@@ -161,14 +268,39 @@ export async function eliminarLote(id) {
   return data;
 }
 
+// Sin conexión, los días restantes y el estado se recalculan con la fecha de hoy
+// (el lote pudo vencer mientras no había internet).
+function actualizarEstadoLocal(item) {
+  const [y, m, d] = String(item.fecha_vencimiento).split("-").map(Number);
+  const hoy = new Date();
+  const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  const dias = Math.round((new Date(y, m - 1, d) - hoy0) / 86400000);
+  const estado = dias <= 0 ? "vencido" : dias <= 5 ? "proximo_a_vencer" : "vigente";
+  return { ...item, dias_restantes: dias, estado };
+}
+
 export async function consultarInventario({ categoria_id, estado } = {}) {
   const params = {};
   if (categoria_id) params.categoria_id = categoria_id;
   if (estado) params.estado = estado;
-  const { data } = await api.get("/inventario", { params });
-  return data;
-
+  let resp;
+  try {
+    resp = await api.get("/inventario", { params });
+  } catch (error) {
+    // Filtro que nunca se consultó con red: se filtra la copia completa guardada
+    if (esErrorDeRed(error) && (categoria_id || estado)) {
+      const completa = await leerCache(claveCache("/inventario", {}));
+      if (completa) {
+        return completa.datos
+          .map(actualizarEstadoLocal)
+          .filter((i) => (!categoria_id || i.categoria_id === categoria_id) && (!estado || i.estado === estado));
+      }
+    }
+    throw error;
+  }
+  return resp.fromCache ? resp.data.map(actualizarEstadoLocal).filter((i) => !estado || i.estado === estado) : resp.data;
 }
+
 export async function registrarConsumo({ lote_id, cantidad, tipo = "consumo" }) {
   const { data } = await api.post("/consumo", { lote_id, cantidad, tipo });
   return data;

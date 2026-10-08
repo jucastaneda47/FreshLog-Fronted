@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
-import { Plus, X, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, X, Trash2, CloudOff, AlertTriangle } from "lucide-react";
+import Aviso from "../components/Aviso";
+import { useSync } from "../context/SyncContext";
 import PageLayout from "../components/PageLayout";
 import GraficoBarrasCategoria from "../components/GraficoBarrasCategoria";
 import GraficoBarrasEmparejadas from "../components/GraficoBarrasEmparejadas";
 import { obtenerIcono, obtenerColorHex } from "../utils/categoriaEstilos";
 import {
   consultarInventario, listarCategorias, listarUnidades,
-  listarProductos, crearProducto, crearCompra, crearLote,
+  listarProductos,
   consultarDistribucionCategorias, consultarCompradoVsConsumidoCategoria,
 } from "../api/client";
 
@@ -30,6 +32,9 @@ export default function Compras() {
   const [inventario, setInventario] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [mostrarModal, setMostrarModal] = useState(false);
+  const [avisoGuardado, setAvisoGuardado] = useState(null); // "enviada" | "pendiente"
+  const categoriaActivaRef = useRef(null);
+  categoriaActivaRef.current = categoriaActiva;
 
   const [distribucion, setDistribucion] = useState([]);
   const [cargandoDistribucion, setCargandoDistribucion] = useState(true);
@@ -43,23 +48,42 @@ export default function Compras() {
         categoriaId ? { categoria_id: categoriaId } : {}
       );
       setInventario(data);
+    } catch {
+      /* sin conexión y sin copia guardada: se deja la lista como estaba */
     } finally {
       setCargando(false);
     }
   }
 
+  function cargarGraficos() {
+    consultarDistribucionCategorias().then(setDistribucion).catch(() => {});
+    consultarCompradoVsConsumidoCategoria().then(setCompradoConsumido).catch(() => {});
+  }
+
+  // Cuando termina una sincronización, se vuelve a pedir lo que muestra la pantalla
   useEffect(() => {
-    listarCategorias().then(setCategorias);
+    function alSincronizar() {
+      cargarInventario(categoriaActivaRef.current);
+      cargarGraficos();
+    }
+    window.addEventListener("freshlog:sincronizado", alSincronizar);
+    return () => window.removeEventListener("freshlog:sincronizado", alSincronizar);
+  }, []);
+
+  useEffect(() => {
+    listarCategorias().then(setCategorias).catch(() => {});
     cargarInventario(null);
 
     setCargandoDistribucion(true);
     consultarDistribucionCategorias()
       .then(setDistribucion)
+      .catch(() => {})
       .finally(() => setCargandoDistribucion(false));
 
     setCargandoCompradoConsumido(true);
     consultarCompradoVsConsumidoCategoria()
       .then(setCompradoConsumido)
+      .catch(() => {})
       .finally(() => setCargandoCompradoConsumido(false));
   }, []);
 
@@ -73,6 +97,8 @@ export default function Compras() {
       titulo="Compras e inventario"
       subtitulo="Registra compras y consulta el estado de cada lote"
     >
+      <PendientesDeSincronizar />
+
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm font-semibold text-slate-700">Stock actual por categoría</p>
@@ -114,12 +140,12 @@ export default function Compras() {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-4 md:px-5">
           <div>
             <p className="text-sm font-semibold text-slate-700">Inventario actual</p>
             <p className="text-xs text-slate-400">{inventario.length} lotes registrados</p>
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-stretch gap-2 md:items-end">
             <button
               onClick={() => setMostrarModal(true)}
               className="rounded-lg bg-alacena-dark px-4 py-2 text-xs font-semibold text-white hover:bg-alacena-darker"
@@ -142,7 +168,7 @@ export default function Compras() {
           </div>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto px-5 py-3">
+        <div className="flex gap-2 overflow-x-auto px-4 py-3 md:px-5">
           <Chip activo={categoriaActiva === null} onClick={() => manejarFiltro(null)}>
             Todos
           </Chip>
@@ -163,10 +189,10 @@ export default function Compras() {
           <p className="px-5 pb-5 text-sm text-slate-500">Cargando...</p>
         ) : inventario.length === 0 ? (
           <p className="px-5 pb-5 text-sm text-slate-500">
-            Todavía no hay productos en el inventario. Registrá tu primera compra.
+            Todavía no hay productos en el inventario. Registra tu primera compra.
           </p>
         ) : (
-          <table className="w-full text-left text-sm">
+          <table className="hidden w-full text-left text-sm lg:table">
             <thead>
               <tr className="text-xs uppercase text-slate-400">
                 <th className="px-5 py-3">Producto</th>
@@ -213,16 +239,66 @@ export default function Compras() {
             </tbody>
           </table>
         )}
+
+        {/* Celular: una tarjeta por lote en lugar de tabla */}
+        {!cargando && inventario.length > 0 && (
+          <ul className="divide-y divide-slate-100 border-t border-slate-100 lg:hidden">
+            {inventario.map((item) => {
+              const estado = ESTILO_ESTADO[item.estado] ?? ESTILO_ESTADO.vigente;
+              const colorCategoria = obtenerColorHex(item.categoria_color);
+              const IconoCategoria = obtenerIcono(item.categoria_icono);
+              return (
+                <li key={item.lote_id} className="px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                        style={{ backgroundColor: `${colorCategoria}22`, color: colorCategoria }}
+                      >
+                        <IconoCategoria size={15} strokeWidth={2.25} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-800">{item.producto_nombre}</p>
+                        <p className="text-xs font-medium" style={{ color: colorCategoria }}>
+                          {item.categoria_nombre}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${estado.clase}`}>
+                      {estado.etiqueta}
+                    </span>
+                  </div>
+                  <p className="mt-2 pl-[46px] text-xs text-slate-500">
+                    {item.cantidad_actual} de {item.cantidad_inicial} {item.unidad_abreviatura} · Vence {item.fecha_vencimiento}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
 
       {mostrarModal && (
         <ModalRegistrarCompra
           onCerrar={() => setMostrarModal(false)}
-          onGuardado={() => {
+          onGuardado={(resultado) => {
             setMostrarModal(false);
+            setAvisoGuardado(resultado);
             cargarInventario(categoriaActiva);
+            cargarGraficos();
           }}
         />
+      )}
+
+      {avisoGuardado === "pendiente" && (
+        <Aviso tipo="exito" titulo="Compra guardada en el dispositivo" duracion={7000} onCerrar={() => setAvisoGuardado(null)}>
+          Se enviará automáticamente cuando vuelva la conexión a internet.
+        </Aviso>
+      )}
+      {avisoGuardado === "enviada" && (
+        <Aviso tipo="exito" titulo="Compra registrada" onCerrar={() => setAvisoGuardado(null)}>
+          Los lotes ya están en tu inventario.
+        </Aviso>
       )}
     </PageLayout>
   );
@@ -281,10 +357,12 @@ function ModalRegistrarCompra({ onCerrar, onGuardado }) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
+  const { registrarCompra } = useSync();
+
   useEffect(() => {
-    listarProductos().then(setProductos);
-    listarCategorias().then(setCategorias);
-    listarUnidades().then(setUnidades);
+    listarProductos().then(setProductos).catch(() => {});
+    listarCategorias().then(setCategorias).catch(() => {});
+    listarUnidades().then(setUnidades).catch(() => {});
   }, []);
 
   function actualizarLinea(id, cambios) {
@@ -300,6 +378,10 @@ function ModalRegistrarCompra({ onCerrar, onGuardado }) {
     for (const linea of lineas) {
       if (!linea.fecha_vencimiento || !linea.cantidad_inicial) {
         setError("Completa fecha de vencimiento y cantidad en todos los productos.");
+        return;
+      }
+      if (!(Number(linea.cantidad_inicial) > 0)) {
+        setError("La cantidad comprada debe ser mayor que cero.");
         return;
       }
       if (linea.fecha_vencimiento < hoyISO()) {
@@ -324,32 +406,47 @@ function ModalRegistrarCompra({ onCerrar, onGuardado }) {
       }
     }
 
+    // La compra se envía completa en una sola operación (compra + productos nuevos + lotes).
+    // Si no hay conexión, queda guardada en el dispositivo y se envía sola al volver internet.
+    const lineasEnvio = lineas.map((l) =>
+      l.modo === "nuevo"
+        ? {
+            producto_id: null,
+            nombre_nuevo: l.nombreNuevo.trim(),
+            categoria_id: Number(l.categoria_id),
+            unidad_de_medida_id: Number(l.unidad_de_medida_id),
+            fecha_vencimiento: l.fecha_vencimiento,
+            cantidad_inicial: Number(l.cantidad_inicial),
+          }
+        : {
+            producto_id: Number(l.producto_id),
+            fecha_vencimiento: l.fecha_vencimiento,
+            cantidad_inicial: Number(l.cantidad_inicial),
+          }
+    );
+    const resumen = lineas.map((l) => {
+      const existente = productos.find((p) => p.id === Number(l.producto_id));
+      const unidad = unidades.find(
+        (u) => u.id === Number(l.modo === "nuevo" ? l.unidad_de_medida_id : existente?.unidad_de_medida_id)
+      );
+      return {
+        nombre: l.modo === "nuevo" ? l.nombreNuevo.trim() : existente?.nombre ?? "Producto",
+        nuevo: l.modo === "nuevo",
+        cantidad: Number(l.cantidad_inicial),
+        unidad: unidad?.abreviatura ?? "",
+        vencimiento: l.fecha_vencimiento,
+      };
+    });
+
     setGuardando(true);
     try {
-      const compra = await crearCompra(new Date().toISOString().slice(0, 10));
-
-      for (const linea of lineas) {
-        let productoId = linea.producto_id;
-
-        if (linea.modo === "nuevo") {
-          const nuevoProducto = await crearProducto({
-            nombre: linea.nombreNuevo,
-            categoria_id: Number(linea.categoria_id),
-            unidad_de_medida_id: Number(linea.unidad_de_medida_id),
-            stock_minimo: null,
-          });
-          productoId = nuevoProducto.id;
-        }
-
-        await crearLote({
-          producto_id: Number(productoId),
-          compra_id: compra.id,
-          fecha_vencimiento: linea.fecha_vencimiento,
-          cantidad_inicial: Number(linea.cantidad_inicial),
-        });
-      }
-
-      onGuardado();
+      const resultado = await registrarCompra({
+        cliente_id: crypto.randomUUID(),
+        fecha_compra: hoyISO(),
+        lineas: lineasEnvio,
+        resumen,
+      });
+      onGuardado(resultado);
     } catch (err) {
       setError(err.response?.data?.detail || "No se pudo registrar la compra.");
     } finally {
@@ -505,6 +602,100 @@ function LineaProducto({ linea, productos, categorias, unidades, onCambiar, onQu
           <Trash2 size={12} /> Quitar producto
         </button>
       )}
+    </div>
+  );
+}
+
+
+// ============================================================
+// Compras registradas sin conexión que aún no llegan al servidor
+// ============================================================
+function PendientesDeSincronizar() {
+  const { cola, enLinea, sincronizando, descartar, reintentar } = useSync();
+  const [confirmando, setConfirmando] = useState(null);
+  if (cola.length === 0) return null;
+
+  return (
+    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 shadow-sm" data-testid="pendientes">
+      <div className="flex items-start gap-3 px-4 py-4 md:px-5">
+        <CloudOff size={20} className="mt-0.5 shrink-0 text-amber-600" />
+        <div>
+          <p className="text-sm font-semibold text-slate-800">Pendientes de sincronizar</p>
+          <p className="text-xs text-slate-500">
+            {enLinea
+              ? sincronizando
+                ? "Enviando al servidor..."
+                : "Estas compras están guardadas en tu dispositivo y se enviarán en unos segundos."
+              : "Estas compras están guardadas en tu dispositivo y se enviarán solas cuando vuelva internet."}
+          </p>
+        </div>
+      </div>
+      <ul className="divide-y divide-amber-100 border-t border-amber-100">
+        {cola.map((c) => (
+          <li key={c.cliente_id} className="px-4 py-3 md:px-5">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-slate-500">
+                  Compra del {c.fecha_compra}
+                  {c.estado === "error" ? (
+                    <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-red-700">
+                      <AlertTriangle size={11} /> No se pudo enviar
+                    </span>
+                  ) : (
+                    <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">En espera</span>
+                  )}
+                </p>
+                <ul className="mt-1 space-y-0.5 text-sm text-slate-700">
+                  {(c.resumen || []).map((r, i) => (
+                    <li key={i}>
+                      {r.nombre}
+                      {r.nuevo && <span className="text-xs text-slate-400"> (nuevo)</span>} — {r.cantidad}
+                      {r.unidad ? ` ${r.unidad}` : ""} · vence {r.vencimiento}
+                    </li>
+                  ))}
+                </ul>
+                {c.estado === "error" && <p className="mt-1 text-xs text-red-600">{c.error}</p>}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {c.estado === "error" && enLinea && (
+                  <button
+                    onClick={() => reintentar(c.cliente_id)}
+                    className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+                  >
+                    Reintentar
+                  </button>
+                )}
+                {confirmando === c.cliente_id ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        setConfirmando(null);
+                        descartar(c.cliente_id);
+                      }}
+                      className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white"
+                    >
+                      Sí, descartar
+                    </button>
+                    <button
+                      onClick={() => setConfirmando(null)}
+                      className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200"
+                    >
+                      No
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setConfirmando(c.cliente_id)}
+                    className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-red-600 ring-1 ring-slate-200 hover:bg-red-50"
+                  >
+                    Descartar
+                  </button>
+                )}
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

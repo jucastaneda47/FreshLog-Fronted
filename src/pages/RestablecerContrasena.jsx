@@ -32,7 +32,7 @@ export default function RestablecerContrasena() {
     setError("");
 
     if (!token) {
-      setError("El enlace no es válido. Solicitá uno nuevo.");
+      setError("El enlace no es válido. Solicita uno nuevo.");
       return;
     }
     if (!reglasCumplidas) {

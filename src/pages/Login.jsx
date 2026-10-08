@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { listarCola } from "../offline/almacen";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -17,6 +18,11 @@ export default function Login() {
       return false;
     }
   });
+  // Compras registradas sin conexión que siguen guardadas en este dispositivo
+  const [comprasGuardadas, setComprasGuardadas] = useState(0);
+  useEffect(() => {
+    listarCola().then((c) => setComprasGuardadas(c.length));
+  }, []);
   const { iniciarSesion } = useAuth();
   const navigate = useNavigate();
 
@@ -84,6 +90,13 @@ export default function Login() {
           {sesionExpirada && (
             <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               Tu sesión se cerró por inactividad. Inicia sesión de nuevo para continuar.
+            </div>
+          )}
+
+          {comprasGuardadas > 0 && (
+            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              Tienes {comprasGuardadas} {comprasGuardadas === 1 ? "compra guardada" : "compras guardadas"} en este
+              dispositivo. Se enviarán cuando inicies sesión con internet.
             </div>
           )}
 

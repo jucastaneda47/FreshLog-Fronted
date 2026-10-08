@@ -277,7 +277,7 @@ export default function Dashboard() {
       <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-sm font-semibold text-slate-700">Distribución del inventario por categoría</p>
         <p className="mb-4 text-xs text-slate-400">
-          Cuántos productos distintos manejas en cada categoría — tocá una porción para ver el detalle
+          Cuántos productos distintos manejas en cada categoría — toca una porción para ver el detalle
         </p>
 
         {cargandoDistribucion ? (
@@ -522,7 +522,7 @@ function ModalRecordatorio({ alertas, onCerrar }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
         <h2 className="text-lg font-bold text-slate-900">
-          Tenés {alertas.length} producto{alertas.length > 1 ? "s" : ""} que revisar
+          Tienes {alertas.length} producto{alertas.length > 1 ? "s" : ""} que revisar
         </h2>
         <p className="mb-4 text-sm text-slate-500">
           Esto es lo que encontramos en tu alacena hoy.

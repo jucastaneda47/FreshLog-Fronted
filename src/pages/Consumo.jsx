@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import PageLayout from "../components/PageLayout";
+import { useSync } from "../context/SyncContext";
 import Aviso from "../components/Aviso";
 import GraficoTorta from "../components/GraficoTorta";
 import { obtenerColorHex, obtenerIcono } from "../utils/categoriaEstilos";
@@ -17,6 +18,7 @@ const ESTILO_ESTADO = {
 
 export default function Consumo() {
   const [inventario, setInventario] = useState([]);
+  const { enLinea } = useSync();
   const [cargando, setCargando] = useState(true);
   const [loteSeleccionado, setLoteSeleccionado] = useState("");
   const [cantidad, setCantidad] = useState("");
@@ -36,10 +38,18 @@ export default function Consumo() {
       if (data.length > 0 && !data.some((i) => String(i.lote_id) === loteSeleccionado)) {
         setLoteSeleccionado(String(data[0].lote_id));
       }
+    } catch {
+      /* sin conexión y sin copia guardada */
     } finally {
       setCargando(false);
     }
   }
+
+  // Al terminar una sincronización de compras, se actualiza la lista
+  useEffect(() => {
+    window.addEventListener("freshlog:sincronizado", cargar);
+    return () => window.removeEventListener("freshlog:sincronizado", cargar);
+  }, []);
 
   useEffect(() => {
     cargar();
@@ -47,11 +57,13 @@ export default function Consumo() {
     setCargandoRiesgo(true);
     consultarRiesgoCategoria()
       .then(setRiesgo)
+      .catch(() => {})
       .finally(() => setCargandoRiesgo(false));
 
     setCargandoAprovechamiento(true);
     consultarAprovechamiento()
       .then(setAprovechamiento)
+      .catch(() => {})
       .finally(() => setCargandoAprovechamiento(false));
   }, []);
 
@@ -241,7 +253,7 @@ export default function Consumo() {
               No hay productos en inventario todavía.
             </p>
           ) : (
-            <table className="w-full text-left text-sm">
+            <table className="hidden w-full text-left text-sm lg:table">
               <thead>
                 <tr className="text-xs uppercase text-slate-400">
                   <th className="px-5 py-3">Producto</th>
@@ -285,7 +297,9 @@ export default function Consumo() {
                         {item.estado === "vencido" ? (
                           <button
                             onClick={() => manejarRetirar(item)}
-                            className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+                            disabled={!enLinea}
+                            title={enLinea ? undefined : "Necesita conexión a internet"}
+                            className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Retirar
                           </button>
@@ -303,6 +317,59 @@ export default function Consumo() {
                 })}
               </tbody>
             </table>
+          )}
+
+          {/* Celular: una tarjeta por lote en lugar de tabla */}
+          {!cargando && inventario.length > 0 && (
+            <ul className="divide-y divide-slate-100 lg:hidden">
+              {inventario.map((item) => {
+                const estado = ESTILO_ESTADO[item.estado] ?? ESTILO_ESTADO.vigente;
+                const colorCategoria = obtenerColorHex(item.categoria_color);
+                const IconoCategoria = obtenerIcono(item.categoria_icono);
+                return (
+                  <li key={item.lote_id} className="px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                          style={{ backgroundColor: `${colorCategoria}22`, color: colorCategoria }}
+                        >
+                          <IconoCategoria size={15} strokeWidth={2.25} />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-slate-800">{item.producto_nombre}</p>
+                          <p className="text-xs text-slate-400">
+                            {item.cantidad_actual} de {item.cantidad_inicial} {item.unidad_abreviatura} ·{" "}
+                            {item.estado === "vencido" ? "Vencido" : `${item.dias_restantes} días`}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${estado.clase}`}>
+                        {estado.etiqueta}
+                      </span>
+                    </div>
+                    <div className="mt-2 pl-[46px]">
+                      {item.estado === "vencido" ? (
+                        <button
+                          onClick={() => manejarRetirar(item)}
+                          disabled={!enLinea}
+                          className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Retirar
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setLoteSeleccionado(String(item.lote_id))}
+                          className="rounded-lg bg-alacena-dark px-3 py-1.5 text-xs font-semibold text-white"
+                        >
+                          Registrar consumo
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
 
@@ -337,11 +404,16 @@ export default function Consumo() {
 
           <button
             onClick={manejarConfirmarConsumo}
-            disabled={enviando}
+            disabled={enviando || !enLinea}
             className="w-full rounded-lg bg-alacena-dark py-2.5 text-sm font-semibold text-white disabled:opacity-60"
           >
             {enviando ? "Guardando..." : "Confirmar consumo"}
           </button>
+          {!enLinea && (
+            <p className="mt-2 text-xs text-amber-600">
+              Registrar consumos necesita conexión a internet. Puedes consultar el inventario guardado.
+            </p>
+          )}
 
           <div className="mt-5 text-xs text-slate-500">
             <p className="mb-1.5 font-medium text-slate-600">Clasificación automática de estado</p>

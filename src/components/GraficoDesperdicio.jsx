@@ -344,7 +344,7 @@ function DetalleProductosDelMes({ datos, indiceActivo }) {
     <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs ring-1 ring-slate-100">
       {!mesActivo ? (
         <span className="text-slate-400">
-          Pasá el mouse sobre un punto del gráfico para ver qué productos pesaron más ese mes.
+          Pasa el cursor (o toca) un punto del gráfico para ver qué productos pesaron más ese mes.
         </span>
       ) : mesActivo.total_lotes === 0 ? (
         <span className="text-slate-400">{mesActivo.periodo} no tuvo lotes por vencer.</span>

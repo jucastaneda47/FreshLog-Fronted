@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { SyncProvider } from "./context/SyncContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login from "./pages/Login";
@@ -17,8 +18,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <SyncProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Navigate to="/tablero" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/registro" element={<Register />} />
           <Route path="/verificar-pin" element={<VerifyPin />} />
@@ -66,8 +68,9 @@ export default function App() {
             }
           />
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/tablero" replace />} />
         </Routes>
+        </SyncProvider>
       </AuthProvider>
     </BrowserRouter>
   );
