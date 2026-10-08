@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { verificarPin, reenviarPin } from "../api/client";
+import FondoAuthMovil, { LogoAuthMovil } from "../components/FondoAuthMovil";
 
 export default function VerifyPin() {
   const location = useLocation();
@@ -39,8 +40,11 @@ export default function VerifyPin() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-8">
-      <div className="w-full max-w-sm">
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-6 p-5 md:bg-slate-50 md:p-8">
+      <FondoAuthMovil />
+      <div className="relative z-10 flex w-full flex-col items-center gap-6">
+        <LogoAuthMovil />
+        <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
         <h2 className="text-2xl font-bold text-slate-900">Verifica tu correo</h2>
         <p className="text-slate-500 text-sm mb-6">
           Ingresa el código de 6 dígitos que enviamos a tu correo.
@@ -100,6 +104,7 @@ export default function VerifyPin() {
             Volver al inicio de sesión
           </Link>
         </p>
+        </div>
       </div>
     </div>
   );

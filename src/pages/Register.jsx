@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registrarUsuario } from "../api/client";
+import FondoAuthMovil, { LogoAuthMovil } from "../components/FondoAuthMovil";
 
 export default function Register() {
   const [form, setForm] = useState({ name: "", correo: "", username: "", contraseña: "" });
@@ -40,6 +41,7 @@ export default function Register() {
 
   return (
     <div className="flex min-h-screen">
+      <FondoAuthMovil />
       <div className="hidden md:flex md:w-1/2 flex-col justify-between text-white p-12 relative overflow-hidden">
         <img
           src="/fondo-auth.jpg"
@@ -66,8 +68,9 @@ export default function Register() {
         </p>
       </div>
 
-      <div className="flex w-full md:w-1/2 items-center justify-center bg-slate-50 p-8">
-        <div className="w-full max-w-sm">
+      <div className="relative z-10 flex w-full flex-col items-center justify-center gap-6 p-5 md:w-1/2 md:bg-slate-50 md:p-8">
+        <LogoAuthMovil />
+        <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
           <div className="flex mb-8 rounded-lg bg-slate-100 p-1 text-sm font-medium">
             <Link
               to="/login"

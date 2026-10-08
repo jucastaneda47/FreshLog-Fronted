@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { restablecerContrasena } from "../api/client";
+import FondoAuthMovil, { LogoAuthMovil } from "../components/FondoAuthMovil";
 
 const REGLAS_CONTRASENA = [
   { etiqueta: "Mínimo 8 caracteres", prueba: (v) => v.length >= 8 },
@@ -64,6 +65,7 @@ export default function RestablecerContrasena() {
 
   return (
     <div className="flex min-h-screen">
+      <FondoAuthMovil />
       {/* Panel izquierdo */}
       <div className="hidden md:flex md:w-1/2 flex-col justify-between text-white p-12 relative overflow-hidden">
         <img
@@ -94,8 +96,9 @@ export default function RestablecerContrasena() {
       </div>
 
       {/* Panel derecho: formulario */}
-      <div className="flex w-full md:w-1/2 items-center justify-center bg-slate-50 p-8">
-        <div className="w-full max-w-sm">
+      <div className="relative z-10 flex w-full flex-col items-center justify-center gap-6 p-5 md:w-1/2 md:bg-slate-50 md:p-8">
+        <LogoAuthMovil />
+        <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
           <h2 className="text-2xl font-bold text-slate-900">Restablecer contraseña</h2>
 
           {!token && (

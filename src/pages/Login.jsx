@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { listarCola } from "../offline/almacen";
+import FondoAuthMovil, { LogoAuthMovil } from "../components/FondoAuthMovil";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -43,6 +44,7 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen">
+      <FondoAuthMovil />
       {/* Panel izquierdo */}
       <div className="hidden md:flex md:w-1/2 flex-col justify-between text-white p-12 relative overflow-hidden">
         <img
@@ -73,8 +75,9 @@ export default function Login() {
       </div>
 
       {/* Panel derecho: formulario */}
-      <div className="flex w-full md:w-1/2 items-center justify-center bg-slate-50 p-8">
-        <div className="w-full max-w-sm">
+      <div className="relative z-10 flex w-full flex-col items-center justify-center gap-6 p-5 md:w-1/2 md:bg-slate-50 md:p-8">
+        <LogoAuthMovil />
+        <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
           <div className="flex mb-8 rounded-lg bg-slate-100 p-1 text-sm font-medium">
             <span className="flex-1 rounded-md bg-white py-2 text-center shadow-sm">
               Iniciar sesión
