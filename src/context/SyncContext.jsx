@@ -20,7 +20,13 @@ const SyncContext = createContext(null);
 
 // Quita del envío los datos que solo sirven para mostrar la compra en pantalla
 function cargaParaServidor(item) {
-  return { cliente_id: item.cliente_id, fecha_compra: item.fecha_compra, lineas: item.lineas };
+  return {
+    cliente_id: item.cliente_id,
+    fecha_compra: item.fecha_compra,
+    lineas: item.lineas,
+    // Hora real en que se registró (importa si estaba sin conexión): así el historial no muestra la hora del envío
+    registrada_en: new Date(item.creada).toISOString(),
+  };
 }
 
 function detalleDeError(error) {

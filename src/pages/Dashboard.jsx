@@ -83,7 +83,7 @@ export default function Dashboard() {
         setAlertasActivas(alertas);
 
         const relevantes = alertas.filter(
-          (a) => a.tipo === "proximo_a_vencer" || a.tipo === "vencido"
+          (a) => a.tipo === "proximo_a_vencer" || a.tipo === "vencido" || a.tipo === "stock_minimo"
         );
         if (relevantes.length > 0) setAlertasRecordatorio(relevantes);
       } finally {
@@ -523,6 +523,7 @@ function ModalCategoria({ categoria, onCerrar }) {
 function ModalRecordatorio({ alertas, onCerrar }) {
   const vencidos = alertas.filter((a) => a.tipo === "vencido");
   const proximos = alertas.filter((a) => a.tipo === "proximo_a_vencer");
+  const bajoStock = alertas.filter((a) => a.tipo === "stock_minimo");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -534,7 +535,7 @@ function ModalRecordatorio({ alertas, onCerrar }) {
           Esto es lo que encontramos en tu alacena hoy.
         </p>
 
-        <div className="max-h-64 space-y-3 overflow-y-auto">
+        <div className="max-h-[55vh] space-y-3 overflow-y-auto">
           {vencidos.length > 0 && (
             <div>
               <p className="mb-1 text-xs font-semibold uppercase text-red-600">Vencidos</p>
@@ -557,6 +558,26 @@ function ModalRecordatorio({ alertas, onCerrar }) {
                 {proximos.map((a) => (
                   <li key={a.id} className="text-sm text-slate-700">
                     • {a.producto_nombre}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {bajoStock.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase text-purple-600">
+                Bajo stock mínimo
+              </p>
+              <ul className="space-y-1">
+                {bajoStock.map((a) => (
+                  <li key={a.id} className="text-sm text-slate-700">
+                    • {a.producto_nombre}
+                    <span className="text-xs text-slate-500">
+                      {" "}
+                      ({a.cantidad_actual} {a.unidad_abreviatura} disponibles · mínimo {a.stock_minimo}{" "}
+                      {a.unidad_abreviatura})
+                    </span>
                   </li>
                 ))}
               </ul>
