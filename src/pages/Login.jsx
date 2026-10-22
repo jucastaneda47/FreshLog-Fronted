@@ -192,12 +192,8 @@ export default function Login() {
             </button>
 
             <div className="mt-3 flex gap-2 border-t border-blue-200 pt-3 text-xs leading-relaxed text-slate-600">
-              <span aria-hidden="true">⏳</span>
               <p>
-                <strong className="font-semibold text-slate-700">El primer inicio de sesión puede tardar.</strong>{" "}
-                Cuando la aplicación lleva un rato sin usarse, el servidor se pone en reposo y necesita
-                hasta un minuto para activarse. Espera sin cerrar ni recargar la página; después de ese
-                primer ingreso, la aplicación responde con normalidad.
+                El primer inicio de sesión puede tardar hasta un minuto mientras el servidor se activa. Espera sin cerrar ni recargar la página; después, la aplicación funcionará con normalidad.
               </p>
             </div>
           </div>
