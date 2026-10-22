@@ -4,6 +4,10 @@ import { useAuth } from "../context/AuthContext";
 import { listarCola } from "../offline/almacen";
 import FondoAuthMovil, { LogoAuthMovil } from "../components/FondoAuthMovil";
 
+// Cuenta de demostración que se muestra en la pantalla de acceso
+const USUARIO_PRUEBA = "M19MOCHO";
+const CLAVE_PRUEBA = "Freshlog123*";
+
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -158,6 +162,45 @@ export default function Login() {
               Regístrate
             </Link>
           </p>
+
+          {/* Cuenta de prueba para quien quiera conocer la aplicación sin registrarse */}
+          <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-slate-700">
+            <h3 className="mb-2 font-semibold text-blue-900">Cuenta de prueba</h3>
+            <dl className="space-y-1">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <dt className="text-slate-600">Usuario:</dt>
+                <dd>
+                  <code className="break-all font-mono text-blue-900">{USUARIO_PRUEBA}</code>
+                </dd>
+              </div>
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <dt className="text-slate-600">Contraseña:</dt>
+                <dd>
+                  <code className="break-all font-mono text-blue-900">{CLAVE_PRUEBA}</code>
+                </dd>
+              </div>
+            </dl>
+            <button
+              type="button"
+              onClick={() => {
+                setUsername(USUARIO_PRUEBA);
+                setPassword(CLAVE_PRUEBA);
+              }}
+              className="mt-3 w-full rounded-lg border border-blue-300 bg-white py-2 text-sm font-medium text-blue-900 transition hover:bg-blue-100"
+            >
+              Usar esta cuenta
+            </button>
+
+            <div className="mt-3 flex gap-2 border-t border-blue-200 pt-3 text-xs leading-relaxed text-slate-600">
+              <span aria-hidden="true">⏳</span>
+              <p>
+                <strong className="font-semibold text-slate-700">El primer inicio de sesión puede tardar.</strong>{" "}
+                Cuando la aplicación lleva un rato sin usarse, el servidor se pone en reposo y necesita
+                hasta un minuto para activarse. Espera sin cerrar ni recargar la página; después de ese
+                primer ingreso, la aplicación responde con normalidad.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
