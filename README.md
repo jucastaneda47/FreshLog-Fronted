@@ -1,16 +1,24 @@
-# React + Vite
+# FreshLog – Frontend (PWA)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Interfaz de FreshLog hecha con React 19, Vite y Tailwind CSS.
 
-Currently, two official plugins are available:
+## Instalación y ejecución
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Node.js 20.19 o superior (o 22.12 o superior).
+2. `npm install` (instala las versiones fijadas en `package-lock.json`).
+3. Copie `.env.example` como `.env.local`; `VITE_API_URL` es la dirección de la API (por defecto http://localhost:8000).
+4. `npm run dev` y abra http://localhost:5173.
 
-## React Compiler
+## Compilación y modo sin conexión
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+    npm run build
+    npm run preview
 
-## Expanding the Oxlint configuration
+El Service Worker solo se registra en la versión compilada. Sin conexión, la aplicación abre con los
+datos consultados antes y permite **registrar compras**, que se sincronizan al recuperar internet.
+Las demás acciones (consumo, alertas, configuración) requieren conexión.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Revisión
+
+    npx oxlint      # revisión del código
+    npm audit       # dependencias (0 vulnerabilidades conocidas a la fecha de la entrega)
